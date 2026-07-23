@@ -18,6 +18,26 @@ This declaration applies only to contributions that you own. It does not apply
 to third-party code, libraries, snippets, or other materials that are owned by
 someone else.
 
+## First Contribution Requirement
+
+Before making any code or documentation contributions, new contributors must
+first submit a separate pull request that only adds their contributor entry to
+the `AUTHORS` file.
+
+The first pull request from a contributor must:
+
+* Only modify the `AUTHORS` file.
+* Add the contributor's GitHub username and declaration using the format
+  described in `AUTHORS`.
+* Not include source code changes, documentation changes, fixes, features, or
+  other modifications.
+
+After the `AUTHORS` entry has been accepted and merged, contributors may submit
+regular pull requests.
+
+This separation allows the project to verify contributor declarations before
+accepting other contributions.
+
 ## Third-Party Code and Licenses
 
 If you include code, snippets, or other materials from another open-source
