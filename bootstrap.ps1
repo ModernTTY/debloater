@@ -20,9 +20,8 @@ $ErrorActionPreference = 'Stop'
 $PersistDir   = Join-Path $Env:ProgramData 'Debloater'
 $PersistPath  = Join-Path $PersistDir 'debloater.ps1'
 
-# TODO: point these at your actual repo/branch
-$RawUrl       = 'https://raw.githubusercontent.com/<you>/<repo>/main/debloater-v2.ps1'
-$BootstrapUrl = 'https://raw.githubusercontent.com/<you>/<repo>/main/bootstrap.ps1'
+$RawUrl       = 'https://raw.githubusercontent.com/ModernTTY/debloater/refs/heads/main/debloater.ps1'
+$BootstrapUrl = 'https://raw.githubusercontent.com/ModernTTY/debloater/refs/heads/main/bootstrap.ps1'
 
 $principal = New-Object Security.Principal.WindowsPrincipal ([Security.Principal.WindowsIdentity]::GetCurrent())
 $isAdmin   = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
