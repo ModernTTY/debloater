@@ -1,0 +1,75 @@
+name: Check AUTHORS membership
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  check-authors:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check contributor
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          echo "Checking contributor: $PR_AUTHOR"
+
+          # Check if AUTHORS was modified in this PR
+          if git diff --name-only origin/$BASE_REF...HEAD | grep -qx "AUTHORS"; then
+            echo "AUTHORS is modified. Allowing contributor registration PR."
+            exit 0
+          fi
+
+          # Check if contributor already exists in AUTHORS
+          if grep -qi "@$PR_AUTHOR" AUTHORS; then
+            echo "Contributor found in AUTHORS."
+            exit 0
+          fi
+
+          echo "Contributor not found in AUTHORS."
+
+          # Add label
+          gh pr edit "$PR_NUMBER" \
+            --repo "$REPO" \
+            --add-label "Not in AUTHORS file"
+
+          # Comment
+          # Comment
+          cat > comment.md <<'EOF'
+          Sorry, you are not listed in the `AUTHORS` file yet.
+
+          Please first create a separate pull request that adds yourself to
+          `AUTHORS` using the required declaration format.
+
+          For more information, see:
+          - `AUTHORS`
+          - `CONTRIBUTING.md`
+
+          Once your contributor entry has been accepted and merged, feel free
+          to recreate this pull request.
+
+          This pull request will now be closed.
+          EOF
+
+          gh pr comment "$PR_NUMBER" \
+            --repo "$REPO" \
+            --body-file comment.md
+
+          # Close PR
+          gh pr close "$PR_NUMBER" \
+            --repo "$REPO"
