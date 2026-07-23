@@ -1,25 +1,50 @@
 # Windows Debloater
 
-A Windows 10/11 PowerShell script that applies privacy, services, user-interface, and app-removal tweaks with minimal interaction. It must be run as Administrator and makes substantial system changes. Read the scope below before running it.
+A Windows 10/11 PowerShell script that applies privacy, services, user-interface, and app-removal tweaks with minimal interaction. It must be run as Administrator.
+
+## How to start
+
+Open **Windows PowerShell as Administrator** and run:
+
+```powershell
+irm https://raw.githubusercontent.com/ModernTTY/debloater/refs/heads/main/bootstrap.ps1 | iex
+```
+
+The bootstrap script downloads `debloater.ps1` to `%ProgramData%\Debloater` and starts Stage 1 from a real file. This allows the automatic resume mechanism to continue through the remaining stages after each reboot.
+
+Requirements:
+
+- Windows PowerShell with Administrator privileges.
+- Internet access for the bootstrap download, O&O ShutUp10++, optional MAS, and optional Firefox installation.
+- A user session that can log on again after each reboot.
+
+The bootstrap command uses PowerShell's `irm` alias for `Invoke-RestMethod` and `iex` for `Invoke-Expression`. It downloads the loader from this repository, which then downloads the main script into `%ProgramData%\Debloater` before starting it.
 
 ## What it changes
 
 The script runs in three stages:
 
-### Stage 1 — UCPD and reboot setup
+<details>
+<summary>Stage 1 — UCPD and reboot setup</summary>
 
 - Disables the `UCPD velocity` scheduled task, when present.
 - Sets the Windows `UCPD` service startup value to disabled.
 - Saves a copy of the script in `%ProgramData%\Debloater`.
 - Registers a temporary `DebloaterResume` scheduled task and reboots after 15 seconds.
 
-### Stage 2 — region and SmartScreen settings
+</details>
+
+<details>
+<summary>Stage 2 — region and SmartScreen settings</summary>
 
 - Prompts for a two-letter country code and changes the Windows home/device region when the code is valid.
 - Disables Smart App Control / SmartScreen policy values.
 - Registers Stage 3 to run at the next logon and reboots after 15 seconds.
 
-### Stage 3 — debloat and system tweaks
+</details>
+
+<details>
+<summary>Stage 3 — debloat and system tweaks</summary>
 
 Stage 3 applies the main changes. Depending on the Windows edition and what is installed, some commands may have no effect.
 
@@ -52,81 +77,108 @@ Stage 3 applies the main changes. Depending on the Windows edition and what is i
 - Optionally downloads and installs Firefox or Firefox Nightly.
 - Deletes the temporary persistent copy and resume task when finished, then reboots once more.
 
-The script uses `SilentlyContinue` for many operations, so an unsupported package, service, registry path, or feature may simply be skipped without stopping the run. It is not a dry-run tool and does not create a general backup of registry settings, removed apps, or files.
 
-## How to start
+</details>
 
-### Recommended: bootstrap loader
+## Execution flow
 
-Open **Windows PowerShell as Administrator** and run:
+The normal run follows this sequence:
 
-```powershell
-irm https://raw.githubusercontent.com/ModernTTY/debloater/refs/heads/main/bootstrap.ps1 | iex
-```
+1. The loader checks for Administrator privileges and requests elevation through UAC when needed.
+2. The loader creates `%ProgramData%\Debloater` and stores the main script there.
+3. Stage 1 applies the UCPD changes and registers `DebloaterResume` for Stage 2.
+4. Stage 2 collects the region code, applies region and SmartScreen-related settings, and registers Stage 3.
+5. Stage 3 applies the remaining registry, service, AppX, Explorer, power, and application changes.
+6. The script removes its scheduled task and temporary `%ProgramData%\Debloater` copy after Stage 3.
 
-The bootstrap script downloads `debloater.ps1` to `%ProgramData%\Debloater` and starts Stage 1 from a real file. This is important because the automatic resume mechanism needs `$PSCommandPath`; running the main script directly through `irm | iex` cannot reliably provide it.
+The stages are selected by the `-Stage` parameter. The valid values are `1`, `2`, and `3`; the default is `1`.
 
-### Local copy
+## Prompt reference
 
-From an elevated PowerShell window in the repository directory:
+| Stage | Prompt | Choices | Result |
+| --- | --- | --- | --- |
+| 2 | Country/region | Two-letter code such as `BE`, `LV`, `US`, or `GB` | Sets the Windows home location and device region when the code is valid |
+| 3 | Microsoft Store | `1` uninstall, `2` keep | Removes Store packages and provisioned Store packages when `1` is selected |
+| 3 | MAS activation | `1` run, `2` skip | Downloads and runs the MAS command when `1` is selected |
+| 3 | Theme | `1` Light, `2` Dark, `3` unchanged | Starts the selected built-in Windows theme |
+| 3 | Browser | `1` Firefox Nightly, `2` Firefox, `3` none | Downloads and runs the selected Mozilla installer |
 
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-.\debloater.ps1
-```
+The region prompt accepts the country/region codes understood by `.NET`'s `RegionInfo` class. Invalid input is reported as an invalid country code and the script continues to the next setting.
 
-The local script can also be started explicitly with `.\debloater.ps1 -Stage 1`, but normally you should let the script advance through all three stages itself.
+## System areas affected
 
-Requirements:
+The script works across these Windows areas:
 
-- Windows PowerShell with Administrator privileges.
-- Internet access for the bootstrap download, O&O ShutUp10++, optional MAS, and optional Firefox installation.
-- A user session that can log on again after each reboot.
+- **Registry:** `HKLM` policy and system settings plus `HKCU` user preferences.
+- **Services:** startup types for telemetry, maps, storage, offline files, Internet Connection Sharing, OneSync, and related services.
+- **Scheduled Tasks:** the UCPD task and the temporary `DebloaterResume` task.
+- **AppX packages:** installed packages for all users and selected provisioned packages in the Windows image.
+- **Windows features:** Recall and other optional components where the current Windows build exposes them.
+- **File system:** user and system temporary folders, OneDrive folders, the Microsoft Store database permission, and the temporary persistent script directory.
+- **Explorer and taskbar:** visibility, search, recommendations, file display, and task-ending behavior.
+- **Power configuration:** creates and activates an Ultimate Performance power scheme.
+- **Security and privacy configuration:** telemetry, location, SmartScreen-related policy values, Defender sample submission, WPBT, BitLocker, and Windows privacy policies.
 
-## Prompts and choices
+## External downloads and installers
 
-Only these actions require an interactive choice:
+The script contacts these external locations during the normal or optional workflow:
 
-1. **Country/region** — Stage 2 asks for a two-letter country code such as `BE`, `LV`, `US`, or `GB`.
-2. **Microsoft Store** — Stage 3 asks whether to uninstall it. Choosing `1` removes the Store and Store Purchase App for installed and provisioned users; choosing `2` keeps it.
-3. **MAS activation** — Stage 3 asks whether to download and run MAS from `get.activated.win`. Choosing `1` runs it; choosing `2` skips it.
-4. **Theme** — Choose Windows Light, Windows Dark, or leave the current theme unchanged.
-5. **Browser** — Choose Firefox Nightly, Firefox, or no browser. The selected installer is downloaded to `Downloads`, run, and then removed.
+| Purpose | Source |
+| --- | --- |
+| Bootstrap loader | `raw.githubusercontent.com/ModernTTY/debloater` |
+| O&O ShutUp10++ | `dl5.oo-software.com` |
+| Optional MAS activation | `get.activated.win` |
+| Firefox installer | `download.mozilla.org` |
 
-O&O ShutUp10++ is launched automatically; it is not selected through a prompt. Review its settings yourself before applying anything in that application.
+Firefox is downloaded to the current user's `Downloads` folder, launched, and removed after the installer exits. O&O ShutUp10++ is downloaded to the current user's temporary folder and launched from there.
 
-## Why it reboots during the script
+## Files and temporary state
 
-The reboots are intentional. The script uses three stages because some service, policy, app-package, and device-region changes are applied more reliably after Windows restarts:
+The repository contains:
 
-```text
-Stage 1 → schedule Stage 2 → reboot → log on
-Stage 2 → schedule Stage 3 → reboot → log on
-Stage 3 → clean up → final reboot
-```
+- `bootstrap.ps1` — elevation-aware loader that downloads and starts the main script.
+- `debloater.ps1` — the three-stage Windows customization script.
+- `README.md` — usage and behavior documentation.
+- `LICENSE` — this repository's Unlicense text.
 
-The `DebloaterResume` scheduled task starts the next stage automatically at logon with highest privileges. The reboot is scheduled with a 15-second delay. To cancel a pending reboot, run this in another elevated window:
+During execution, the script creates:
 
-```powershell
-shutdown /a
-```
+- `%ProgramData%\Debloater\debloater.ps1` — stable copy used by Task Scheduler.
+- A scheduled task named `DebloaterResume` — points to the next stage and runs at the current user's logon.
+- A temporary Firefox installer in `Downloads` when a browser is selected.
+- A temporary O&O ShutUp10++ executable in `%TEMP%`.
 
-If automatic resume does not work, run the local persistent copy manually:
+The persistent script copy and resume task are removed at the end of Stage 3.
 
-```powershell
-& "$env:ProgramData\Debloater\debloater.ps1" -Stage 2
-```
+## Compatibility and repeat runs
 
-or `-Stage 3`, depending on the last completed stage. Do not run multiple stages at the same time.
+The script is designed for Windows 10/11 systems with the standard Windows PowerShell cmdlets for services, registry, AppX packages, scheduled tasks, BitLocker, and optional features. Results vary by Windows edition, build, installed packages, hardware architecture, and whether a component is already absent.
 
-## Important warnings
+Many operations are conditional or use `-ErrorAction SilentlyContinue`. This means an unavailable service, package, registry key, or optional feature can be skipped while later sections continue. Running the script again applies the same selected settings where they are still available; removed packages and components are not recreated by the script.
 
-- Back up important files and create a restore point before running this script.
-- It can disable privacy/security protections, disable services, remove Windows components, start decrypting the system drive by disabling BitLocker, remove Edge and OneDrive, and delete temporary files.
-- Removing the Microsoft Store, Edge, OneDrive, Camera, Paint, Widgets, Xbox components, or other AppX packages may affect features or make later reinstallations difficult.
-- The MAS option is an external activation tool and is entirely optional. Do not select it unless you understand and accept its licensing and security implications.
-- The script downloads and executes software from external websites. Inspect the source and verify the URLs before use.
-- There is no supported undo script. Restore from a backup or reinstall affected Windows components if you need to reverse changes.
+The script detects ARM64 processors for the Firefox download and selects the matching Mozilla installer URL. Other system changes use Windows-native commands and registry paths rather than architecture-specific binaries.
+
+## Troubleshooting
+
+### The loader does not start
+
+Run it from Windows PowerShell as Administrator and confirm that the computer can reach GitHub. The loader uses `ExecutionPolicy Bypass` for the process it starts and does not change the machine-wide execution policy.
+
+### A prompt accepts no input
+
+The Store, MAS, theme, and browser prompts only accept the numbered values shown on screen. The region prompt expects a two-letter country/region code.
+
+### A package or service was not changed
+
+This can happen when the component is not installed, is named differently on the current Windows build, is already removed, or is protected by the current edition. The script continues through many such cases without displaying a terminating error.
+
+### A selected browser does not install
+
+The installer is downloaded to `Downloads` and started as the current user. Check that the download completed and that the installer was allowed to finish before closing its window.
+
+### The script stops after Explorer restarts
+
+Explorer is intentionally stopped and started during Stage 3 so taskbar and Explorer settings can reload. Wait for the desktop shell to return before continuing with any other interaction.
 
 ## License and attribution
 
