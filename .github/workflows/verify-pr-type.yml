@@ -43,7 +43,11 @@ jobs:
 
             gh pr comment "$PR_NUMBER" --repo "$REPO" --body "No PR type was selected. Please select exactly one option from the PR template. Feel free to reopen once fixed."
 
-            gh pr close "$PR_NUMBER" --repo "$REPO"
+            gh api \
+              --method PATCH \
+              "/repos/$REPO/pulls/$PR_NUMBER" \
+              -f state=closed
+
             exit 0
           fi
 
@@ -52,7 +56,11 @@ jobs:
 
             gh pr comment "$PR_NUMBER" --repo "$REPO" --body "Both PR types were selected. Please select only one option and reopen once fixed."
 
-            gh pr close "$PR_NUMBER" --repo "$REPO"
+            gh api \
+              --method PATCH \
+              "/repos/$REPO/pulls/$PR_NUMBER" \
+              -f state=closed
+
             exit 0
           fi
 
@@ -62,7 +70,10 @@ jobs:
 
               gh pr comment "$PR_NUMBER" --repo "$REPO" --body "This is an AUTHORS PR but it targets the wrong branch. AUTHORS PRs must target main. Feel free to reopen once fixed."
 
-              gh pr close "$PR_NUMBER"
+              gh api \
+                --method PATCH \
+                "/repos/$REPO/pulls/$PR_NUMBER" \
+                -f state=closed
             fi
 
             exit 0
@@ -74,7 +85,10 @@ jobs:
 
               gh pr comment "$PR_NUMBER" --repo "$REPO" --body "This is a normal PR but it targets the wrong branch. Normal PRs must target test. Feel free to reopen once fixed."
 
-              gh pr close "$PR_NUMBER"
+              gh api \
+                --method PATCH \
+                "/repos/$REPO/pulls/$PR_NUMBER" \
+                -f state=closed
             fi
 
             exit 0
