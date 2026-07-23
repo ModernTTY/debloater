@@ -2,8 +2,8 @@
 
 Please select **one** option:
 
-* [ ] Normal feature/fix PR (target branch: `test`)
-* [ ] Add myself to AUTHORS PR (target branch: `main`)
+- [ ] Normal feature/fix PR (target branch: `test`)
+- [ ] Add myself to AUTHORS PR (target branch: `main`)
 
 ---
 
