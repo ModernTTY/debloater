@@ -1,6 +1,6 @@
 # Windows Debloater
 
-A Windows 10/11 PowerShell script that applies privacy, services, user-interface, and app-removal tweaks with minimal interaction. It must be run as Administrator.
+A Windows 10 and 11 PowerShell script that applies privacy, services, user-interface, and app-removal tweaks with minimal interaction. It must be run as Administrator.
 
 ## How to start
 
