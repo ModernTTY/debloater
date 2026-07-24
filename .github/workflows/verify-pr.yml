@@ -1,0 +1,178 @@
+name: Verify PR type, branch, and AUTHORS pledge
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  verify-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verify PR type and branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BRANCH: ${{ github.event.pull_request.base.ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          NORMAL=false
+          AUTHORS=false
+
+          if echo "$PR_BODY" | grep -Fq '[x] Normal feature/fix PR'; then
+            NORMAL=true
+          fi
+
+          if echo "$PR_BODY" | grep -Fq '[x] Add myself to AUTHORS PR'; then
+            AUTHORS=true
+          fi
+
+          if [ "$NORMAL" = false ] && [ "$AUTHORS" = false ]; then
+            gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label "Incomplete"
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "No PR type was selected. Please select exactly one option from the PR template. Feel free to reopen once fixed."
+            gh api --method PATCH "/repos/$REPO/pulls/$PR_NUMBER" -f state=closed
+            exit 0
+          fi
+
+          if [ "$NORMAL" = true ] && [ "$AUTHORS" = true ]; then
+            gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label "Incomplete"
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "Both PR types were selected. Please select only one option and reopen once fixed."
+            gh api --method PATCH "/repos/$REPO/pulls/$PR_NUMBER" -f state=closed
+            exit 0
+          fi
+
+          if [ "$AUTHORS" = true ]; then
+            if [ "$PR_BRANCH" != "main" ]; then
+              gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label "Wrong branch"
+              gh pr comment "$PR_NUMBER" --repo "$REPO" --body "This is an AUTHORS PR but it targets the wrong branch. AUTHORS PRs must target main. Feel free to reopen once fixed."
+              gh api --method PATCH "/repos/$REPO/pulls/$PR_NUMBER" -f state=closed
+              exit 0
+            fi
+
+            exit 0
+          fi
+
+          if [ "$NORMAL" = true ] && [ "$PR_BRANCH" != "test" ]; then
+            gh pr edit "$PR_NUMBER" --repo "$REPO" --add-label "Wrong branch"
+            gh pr comment "$PR_NUMBER" --repo "$REPO" --body "This is a normal PR but it targets the wrong branch. Normal PRs must target test. Feel free to reopen once fixed."
+            gh api --method PATCH "/repos/$REPO/pulls/$PR_NUMBER" -f state=closed
+            exit 0
+          fi
+
+      - name: Verify AUTHORS pledge and merge valid AUTHORS PR
+        if: contains(github.event.pull_request.body, '[x] Add myself to AUTHORS PR') && !contains(github.event.pull_request.body, '[x] Normal feature/fix PR') && github.event.pull_request.base.ref == 'main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          files_json="$(gh api \
+            --header 'Accept: application/vnd.github+json' \
+            --paginate \
+            --slurp \
+            "/repos/$REPO/pulls/$PR_NUMBER/files?per_page=100")"
+
+          if ! FILES_JSON="$files_json" python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          pages = json.loads(os.environ["FILES_JSON"])
+          files = [item["filename"] for page in pages for item in page]
+          if files != ["AUTHORS.md"]:
+              print("Not an AUTHORS-only PR; no merge action required.")
+              sys.exit(1)
+          PY
+          then
+            exit 0
+          fi
+
+          BASE_JSON="$(gh api \
+            --header 'Accept: application/vnd.github+json' \
+            "/repos/$BASE_REPO/contents/AUTHORS.md?ref=$BASE_SHA")"
+          HEAD_JSON="$(gh api \
+            --header 'Accept: application/vnd.github+json' \
+            "/repos/$HEAD_REPO/contents/AUTHORS.md?ref=$HEAD_SHA")"
+
+          if ! BASE_JSON="$BASE_JSON" HEAD_JSON="$HEAD_JSON" PR_AUTHOR="$PR_AUTHOR" python3 - <<'PY'
+          import base64
+          import json
+          import os
+          import sys
+
+          def content(name):
+              payload = os.environ[name]
+              return base64.b64decode(json.loads(payload)["content"]).decode("utf-8").replace("\r\n", "\n")
+
+          base_lines = content("BASE_JSON").splitlines()
+          head_lines = content("HEAD_JSON").splitlines()
+
+          # Existing AUTHORS.md content must remain an ordered subsequence.
+          position = 0
+          for line in base_lines:
+              try:
+                  position = head_lines.index(line, position) + 1
+              except ValueError:
+                  print("The PR deletes or changes existing AUTHORS.md content.")
+                  sys.exit(1)
+
+          inserted = []
+          position = 0
+          for line in base_lines:
+              index = head_lines.index(line, position)
+              inserted.extend(head_lines[position:index])
+              position = index + 1
+          inserted.extend(head_lines[position:])
+
+          pledge = [
+              f"@{os.environ['PR_AUTHOR']}",
+              "I dedicate any and all copyright interest I have in my original contributions",
+              "to this software to the public domain. I make this dedication for the benefit",
+              "of the public at large and to the detriment of my heirs and successors. I",
+              "intend this dedication to be an overt act of relinquishment in perpetuity of all present and future rights I hold in my contributions under copyright law.",
+              "",
+              "I confirm that any third-party code included in my contributions remains under",
+              "its original license and that required attribution and license notices have been preserved.",
+          ]
+          pledge_with_separator = [pledge[0], ""] + pledge[1:]
+
+          if len(inserted) < len(pledge) or len(inserted) > len(pledge_with_separator) + 5:
+              print(f"Expected the pledge plus at most five extra lines; found {len(inserted)} inserted lines.")
+              sys.exit(1)
+
+          has_pledge = any(
+              inserted[index:index + len(candidate)] == candidate
+              for candidate in (pledge, pledge_with_separator)
+              for index in range(len(inserted) - len(candidate) + 1)
+          )
+          if not has_pledge:
+              print("The required AUTHORS pledge is missing or does not exactly match the template.")
+              sys.exit(1)
+
+          print("Valid AUTHORS pledge PR.")
+          PY
+          then
+            echo "AUTHORS pledge validation failed; leaving PR unchanged."
+            exit 0
+          fi
+
+          gh pr merge "$PR_NUMBER" \
+            --repo "$REPO" \
+            --squash \
+            --auto \
+            --delete-branch
