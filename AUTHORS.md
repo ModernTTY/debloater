@@ -22,7 +22,7 @@ all present and future rights I hold in my contributions under copyright law.
 I confirm that any third-party code included in my contributions remains under
 its original license and that required attribution and license notices have
 been preserved.
-```
+
 
 By adding an entry to this file, contributors confirm that the declaration
 applies to their original contributions to this project. This declaration does
