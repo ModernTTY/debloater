@@ -36,7 +36,7 @@ own, which remain subject to their respective licenses.
 <!-- Add contributor declarations below this line -->
 
 ```
-@ModernTTY
+@temp-debug-change-pls-disregard
 
 I dedicate any and all copyright interest I have in my original contributions
 to this software to the public domain. I make this dedication for the benefit
