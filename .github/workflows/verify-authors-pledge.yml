@@ -1,0 +1,121 @@
+name: Verify AUTHORS pledge
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  verify-pledge:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verify and merge AUTHORS-only pledge PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          files_json="$(gh api \
+            --header 'Accept: application/vnd.github+json' \
+            --paginate \
+            --slurp \
+            "/repos/$REPO/pulls/$PR_NUMBER/files?per_page=100")"
+
+          # This workflow is only for the separate AUTHORS registration PR.
+          if ! FILES_JSON="$files_json" python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          pages = json.loads(os.environ["FILES_JSON"])
+          files = [item["filename"] for page in pages for item in page]
+          if files != ["AUTHORS.md"]:
+              print("Not an AUTHORS-only PR; no action required.")
+              sys.exit(1)
+          PY
+          then
+            exit 0
+          fi
+
+          BASE_JSON="$(gh api \
+            --header 'Accept: application/vnd.github+json' \
+            "/repos/$BASE_REPO/contents/AUTHORS.md?ref=$BASE_SHA")"
+          HEAD_JSON="$(gh api \
+            --header 'Accept: application/vnd.github+json' \
+            "/repos/$HEAD_REPO/contents/AUTHORS.md?ref=$HEAD_SHA")"
+
+          if ! BASE_JSON="$BASE_JSON" HEAD_JSON="$HEAD_JSON" PR_AUTHOR="$PR_AUTHOR" python3 - <<'PY'
+          import base64
+          import os
+          import sys
+
+          def content(name):
+              payload = os.environ[name]
+              return base64.b64decode(__import__("json").loads(payload)["content"]).decode("utf-8").replace("\r\n", "\n")
+
+          base_lines = content("BASE_JSON").splitlines()
+          head_lines = content("HEAD_JSON").splitlines()
+          added_lines = head_lines.copy()
+
+          # The base file must remain an ordered subsequence: this rejects all
+          # deletions and edits while allowing insertions.
+          position = 0
+          for line in base_lines:
+              try:
+                  position = added_lines.index(line, position) + 1
+              except ValueError:
+                  print("The PR deletes or changes existing AUTHORS.md content.")
+                  sys.exit(1)
+
+          inserted = []
+          position = 0
+          for line in base_lines:
+              index = added_lines.index(line, position)
+              inserted.extend(added_lines[position:index])
+              position = index + 1
+          inserted.extend(added_lines[position:])
+
+          pledge = [
+              f"@{os.environ['PR_AUTHOR']}",
+              "",
+              "I dedicate any and all copyright interest I have in my original contributions",
+              "to this software to the public domain. I make this dedication for the benefit",
+              "of the public at large and to the detriment of my heirs and successors. I",
+              "intend this dedication to be an overt act of relinquishment in perpetuity of all present and future rights I hold in my contributions under copyright law.",
+              "",
+              "I confirm that any third-party code included in my contributions remains under",
+              "its original license and that required attribution and license notices have been preserved.",
+          ]
+
+          if len(inserted) < len(pledge) or len(inserted) > len(pledge) + 5:
+              print(f"Expected the pledge plus at most five extra lines; found {len(inserted)} inserted lines.")
+              sys.exit(1)
+
+          # The required pledge must be one contiguous block among the additions.
+          if not any(inserted[index:index + len(pledge)] == pledge for index in range(len(inserted) - len(pledge) + 1)):
+              print("The required AUTHORS pledge is missing or does not exactly match the template.")
+              sys.exit(1)
+
+          print("Valid AUTHORS pledge PR.")
+          PY
+          then
+            echo "AUTHORS pledge validation failed; leaving PR unchanged."
+            exit 0
+          fi
+
+          gh pr merge "$PR_NUMBER" \
+            --repo "$REPO" \
+            --squash \
+            --auto \
+            --delete-branch
