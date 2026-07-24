@@ -10,19 +10,17 @@ followed by the contributor declaration.
 
 Format:
 
-```
-@your-username
+"@your-username
 
 I dedicate any and all copyright interest I have in my original contributions
 to this software to the public domain. I make this dedication for the benefit
 of the public at large and to the detriment of my heirs and successors. I
-intend this dedication to be an overt act of relinquishment in perpetuity of
-all present and future rights I hold in my contributions under copyright law.
+intend this dedication to be an overt act of relinquishment in perpetuity of all present and future rights I hold in my contributions under copyright law.
 
 I confirm that any third-party code included in my contributions remains under
-its original license and that required attribution and license notices have
-been preserved.
-```
+its original license and that required attribution and license notices have been preserved.
+"
+
 
 By adding an entry to this file, contributors confirm that the declaration
 applies to their original contributions to this project. This declaration does
@@ -35,16 +33,14 @@ own, which remain subject to their respective licenses.
 
 <!-- Add contributor declarations below this line -->
 
-```
+
 @ModernTTY
 
 I dedicate any and all copyright interest I have in my original contributions
 to this software to the public domain. I make this dedication for the benefit
 of the public at large and to the detriment of my heirs and successors. I
-intend this dedication to be an overt act of relinquishment in perpetuity of
-all present and future rights I hold in my contributions under copyright law.
+intend this dedication to be an overt act of relinquishment in perpetuity of all present and future rights I hold in my contributions under copyright law.
 
 I confirm that any third-party code included in my contributions remains under
-its original license and that required attribution and license notices have
-been preserved.
-```
+its original license and that required attribution and license notices have been preserved.
+
