@@ -10,8 +10,7 @@ followed by the contributor declaration.
 
 Format:
 
-"
-@your-username
+"@your-username
 
 I dedicate any and all copyright interest I have in my original contributions
 to this software to the public domain. I make this dedication for the benefit
