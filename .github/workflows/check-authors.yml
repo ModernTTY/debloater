@@ -32,13 +32,13 @@ jobs:
           # Check if AUTHORS was modified in this PR
           CHANGED_FILES=$(git diff --name-only origin/$BASE_REF...HEAD)
           
-          if [ "$CHANGED_FILES" = "AUTHORS" ]; then
+          if [ "$CHANGED_FILES" = "AUTHORS.md" ]; then
               echo "Registration PR detected."
               exit 0
           fi
 
           # Check if contributor already exists in AUTHORS
-          if grep -qi "@$PR_AUTHOR" AUTHORS; then
+          if grep -qi "@$PR_AUTHOR" AUTHORS.md; then
             echo "Contributor found in AUTHORS."
             exit 0
           fi
@@ -59,7 +59,7 @@ jobs:
           `AUTHORS` using the required declaration format.
 
           For more information, see:
-          - `AUTHORS`
+          - `AUTHORS.md`
           - `CONTRIBUTING.md`
 
           Once your contributor entry has been accepted and merged, feel free
