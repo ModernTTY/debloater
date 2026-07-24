@@ -44,3 +44,12 @@ intend this dedication to be an overt act of relinquishment in perpetuity of all
 I confirm that any third-party code included in my contributions remains under
 its original license and that required attribution and license notices have been preserved.
 
+@ModernTTY
+
+I dedicate any and all copyright interest I have in my original contributions
+to this software to the public domain. I make this dedication for the benefit
+of the public at large and to the detriment of my heirs and successors. I
+intend this dedication to be an overt act of relinquishment in perpetuity of all present and future rights I hold in my contributions under copyright law.
+
+I confirm that any third-party code included in my contributions remains under
+its original license and that required attribution and license notices have been preserved.
