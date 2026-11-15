@@ -424,7 +424,7 @@ function Invoke-Stage3 {
     Write-Step "REMOVING MICROSOFT EDGE"
     
 
-    $ErrorActionPreference = "Stop"
+    $ErrorActionPreference = "SilentlyContinue"
     $regView = [Microsoft.Win32.RegistryView]::Registry32
     $microsoft = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, $regView).
     OpenSubKey('SOFTWARE\Microsoft', $true)
